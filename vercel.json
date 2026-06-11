@@ -15,24 +15,6 @@
       ]
     },
     {
-      "source": "/(.*)\\.kmz",
-      "headers": [
-        { "key": "Content-Type", "value": "application/vnd.google-earth.kmz" }
-      ]
-    },
-    {
-      "source": "/(.*)\\.kml",
-      "headers": [
-        { "key": "Content-Type", "value": "application/vnd.google-earth.kml+xml" }
-      ]
-    },
-    {
-      "source": "/(.*)\\.gpx",
-      "headers": [
-        { "key": "Content-Type", "value": "application/gpx+xml" }
-      ]
-    },
-    {
       "source": "/(.*)",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
@@ -40,8 +22,5 @@
         { "key": "X-XSS-Protection", "value": "1; mode=block" }
       ]
     }
-  ],
-  "rewrites": [
-    { "source": "/share-target", "destination": "/" }
   ]
 }

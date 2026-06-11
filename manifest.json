@@ -2,7 +2,7 @@
   "id": "/randonneur5",
   "name": "Randonneur5",
   "short_name": "Randonneur5",
-  "description": "Éditeur de randonnées KMZ/KML/GPX avec tracé animé",
+  "description": "Editeur de randonnees KMZ/KML/GPX avec trace anime",
   "start_url": "/randonneur5/",
   "scope": "/randonneur5/",
   "display": "standalone",
@@ -20,18 +20,6 @@
     "action": "/randonneur5/share-target",
     "method": "POST",
     "enctype": "multipart/form-data",
-    "params": {
-      "files": [
-        {
-          "name": "file",
-          "accept": [
-            "application/vnd.google-earth.kmz",
-            "application/vnd.google-earth.kml+xml",
-            "application/gpx+xml",
-            "application/octet-stream"
-          ]
-        }
-      ]
-    }
+    "params": { "files": [{ "name": "file", "accept": ["application/vnd.google-earth.kmz","application/vnd.google-earth.kml+xml","application/gpx+xml","application/octet-stream"] }] }
   }
 }
