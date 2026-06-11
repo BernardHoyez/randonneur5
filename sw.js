@@ -1,4 +1,4 @@
-const VERSION = 'randonneur5-v1';
+const VERSION = 'randonneur5-v3';  // bumper invalide TOUT le cache précédent
 const SCOPE   = '/randonneur5/';
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -6,7 +6,7 @@ self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))
+      Promise.all(keys.map(k => caches.delete(k)))  // supprimer TOUS les caches sans exception
     )
   );
   self.clients.claim();
@@ -32,9 +32,21 @@ self.addEventListener('fetch', event => {
 
   if (event.request.method !== 'GET') return;
 
+  // Tuiles carto et ressources externes : réseau direct, pas de cache
   const externe = ['tile.openstreetmap.org','data.geopf.fr','unpkg.com',
                    'fonts.googleapis.com','fonts.gstatic.com','cdnjs.cloudflare.com'];
   if (externe.some(h => url.hostname.includes(h))) return;
+
+  // index.html et manifest : toujours réseau, jamais depuis le cache
+  if (url.pathname === SCOPE || url.pathname === SCOPE + 'index.html'
+      || url.pathname === SCOPE + 'manifest.json' || url.pathname === SCOPE + 'sw.js') {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Autres ressources (icônes…) : network-first avec mise en cache
   event.respondWith(networkFirst(event.request));
 });
 
@@ -47,7 +59,8 @@ async function networkFirst(req) {
     const cached = await caches.match(req);
     if (cached) return cached;
     return new Response(
-      '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Randonneur5 — Hors ligne</title>'
+      '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">'
+      +'<title>Randonneur5 — Hors ligne</title>'
       +'<style>body{font-family:system-ui;background:#0d1a09;color:#b8d4a0;display:flex;'
       +'align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}'
       +'h1{color:#7aad5a}</style></head><body><div><h1>🏔 Randonneur5</h1>'
