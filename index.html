@@ -1465,7 +1465,7 @@ if(track.length>1){var tl=L.polyline(track,{color:'#1a3a0f',weight:6,opacity:.8}
 // ── Demarrage : un clic utilisateur debloque l'autoplay audio ──
 document.getElementById('btn-go').addEventListener('click',function(){
   document.getElementById('splash').style.display='none';_go=true;
-  if(window.speechSynthesis){var u=new SpeechSynthesisUtterance('');window.speechSynthesis.speak(u);window.speechSynthesis.cancel();}
+  if(window.speechSynthesis){ window.speechSynthesis.resume(); }
   vmap.invalidateSize();
   ensureV().then(function(){ runLoop(); });
 });
@@ -1525,31 +1525,32 @@ function animTo(si){
 // ── Lecture TTS, simple et bloquante jusqu'a onend/onerror/skip ──
 function speakIt(s){
   return new Promise(function(res){
-    if(!window.speechSynthesis||!_vr||!ttsOn)return res();
+    if(!window.speechSynthesis||!ttsOn){return res();}
     var txt=(s.comment||s.name||'').trim();
     if(!txt)return res();
-    var u=new SpeechSynthesisUtterance(txt);
-    u.lang='fr-FR';u.rate=0.92;
-    var fr=window.speechSynthesis.getVoices().find(function(v){return v.lang&&v.lang.startsWith('fr');});
-    if(fr)u.voice=fr;
     var done=false;
     function finish(){
       if(done)return; done=true;
-      clearInterval(pollTimer);
+      clearTimeout(watchdog);
       document.getElementById('tts-ic').textContent='';
       res();
     }
+    // Lecture sequentielle stricte (await) : pas de cancel() necessaire ici,
+    // ce qui evite de declencher prematurement onerror sur l'utterance courante.
+    var u=new SpeechSynthesisUtterance(txt);
+    u.lang='fr-FR';u.rate=0.92;
+    var voices=window.speechSynthesis.getVoices();
+    var fr=voices.find(function(v){return v.lang&&v.lang.startsWith('fr');});
+    if(fr)u.voice=fr;
     u.onend=finish; u.onerror=finish;
     document.getElementById('tts-ic').textContent='[TTS]';
     window.speechSynthesis.speak(u);
-    // Poll de secours : si _skip devient vrai, ou si le moteur est bloque
-    // (speaking reste true sans jamais finir au-dela de la duree estimee+5s)
-    var estDur=Math.max(3000,txt.length*90)+5000;
-    var t0=Date.now();
-    var pollTimer=setInterval(function(){
-      if(_skip){window.speechSynthesis.cancel();finish();return;}
-      if(Date.now()-t0>estDur){window.speechSynthesis.cancel();finish();}
-    },200);
+    // Watchdog : duree estimee + marge, au cas ou onend ne se declenche jamais
+    var estDur=Math.max(2000,txt.length*100)+3000;
+    var watchdog=setTimeout(function(){
+      window.speechSynthesis.cancel();
+      finish();
+    },estDur);
   });
 }
 
