@@ -1456,79 +1456,175 @@ async function exportVisite(){
   const LAYER=state.mapLayer;
   const css='*{box-sizing:border-box;margin:0;padding:0}body{background:#000;font-family:system-ui;color:#f0ebe0;height:100vh;overflow:hidden;display:flex;flex-direction:column}#splash{position:fixed;inset:0;z-index:9999;background:#0d1a09;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px}#splash h1{font-size:1.6rem;color:#7aad5a;font-family:monospace}#splash p{color:#8a9a80;font-size:.9rem;text-align:center;max-width:300px;line-height:1.6}.btn-go{padding:14px 36px;background:linear-gradient(135deg,#2d5a1b,#4a7c35);color:#f8f5ee;border:none;border-radius:30px;font-size:1rem;font-weight:700;cursor:pointer}#vmap-wrap{flex:0 0 42vh;position:relative}#vmap{width:100%;height:100%}#hud{position:absolute;top:0;left:0;right:0;background:linear-gradient(rgba(0,0,0,.7),transparent);padding:8px 14px;display:flex;align-items:center;gap:10px;z-index:500}#prog-txt{font-family:monospace;font-size:.72rem;color:#b8d4a0;flex-shrink:0}#prog-bar{flex:1;height:3px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden}#prog-fill{height:100%;background:#7aad5a;border-radius:2px;transition:width .4s}#tts-ic{font-size:.9rem;flex-shrink:0;min-width:20px}#photo-wrap{flex:1;position:relative;background:#0a0f07;display:flex;align-items:center;justify-content:center;overflow:hidden}#slide-photo{max-width:100%;max-height:100%;object-fit:contain;display:none}#no-photo{font-size:5rem;opacity:.15}#info-bar{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.88));padding:18px 16px 10px}#wp-name{font-family:monospace;font-size:.95rem;font-weight:700;color:#7aad5a;margin-bottom:3px}#wp-comment{font-size:.78rem;color:#b8d4a0;line-height:1.5;max-height:3.3em;overflow:hidden}#controls{position:absolute;bottom:10px;right:12px;display:flex;gap:8px;z-index:10}.ctrl-btn{padding:7px 14px;border-radius:20px;border:none;font-size:.76rem;font-weight:600;cursor:pointer;font-family:system-ui}#btn-next{background:rgba(74,124,53,.9);color:#f8f5ee}#btn-prev{background:rgba(255,255,255,.12);color:#b8d4a0}#btn-tts{background:rgba(255,255,255,.1);color:#b8d4a0}#cdwrap{position:absolute;bottom:10px;left:12px}#cdsvg circle{fill:none;stroke:#7aad5a;stroke-width:3;stroke-dasharray:88;stroke-dashoffset:88;transform:rotate(-90deg);transform-origin:50% 50%}#end{display:none;position:fixed;inset:0;background:#0d1a09;z-index:8000;flex-direction:column;align-items:center;justify-content:center;gap:20px}#end h2{color:#7aad5a;font-family:monospace}#end p{color:#8a9a80;font-size:.9rem}#btn-rs{padding:12px 28px;background:rgba(74,124,53,.8);color:#f8f5ee;border:1px solid #4a7c35;border-radius:20px;font-size:.88rem;font-weight:600;cursor:pointer}';
   const jsMain=`var slides=${slidesData};var track=${trackData};
-var idx=0,cTimer=null,ttsOn=true,travM=null,wpM=null,_run=false,_go=false,_vr=false,_gen=0;
+var idx=0,ttsOn=true,travM=null,wpM=null,_go=false,_vr=false,_loopRunning=false,_skip=false,_dir=1;
 var vmap=L.map('vmap',{zoomControl:false,attributionControl:false});
 var _tl={'osm':L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}),'ign-plan':L.tileLayer('https://data.geopf.fr/wmts?layer=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&style=normal&tilematrixset=PM&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image%2Fpng&TileMatrix={z}&TileCol={x}&TileRow={y}',{maxZoom:19}),'ign-ortho':L.tileLayer('https://data.geopf.fr/wmts?layer=ORTHOIMAGERY.ORTHOPHOTOS&style=normal&tilematrixset=PM&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image%2Fjpeg&TileMatrix={z}&TileCol={x}&TileRow={y}',{maxZoom:20})};
 (_tl['${LAYER}']||_tl['osm']).addTo(vmap);
 if(track.length>1){var tl=L.polyline(track,{color:'#1a3a0f',weight:6,opacity:.8}).addTo(vmap);L.polyline(track,{color:'#3d7a28',weight:3,opacity:.7}).addTo(vmap);vmap.fitBounds(tl.getBounds(),{padding:[16,16]});}
+
+// ── Demarrage : un clic utilisateur debloque l'autoplay audio ──
 document.getElementById('btn-go').addEventListener('click',function(){
   document.getElementById('splash').style.display='none';_go=true;
   if(window.speechSynthesis){var u=new SpeechSynthesisUtterance('');window.speechSynthesis.speak(u);window.speechSynthesis.cancel();}
   vmap.invalidateSize();
-  ensureV().then(function(){showSlide(0,false);});
+  ensureV().then(function(){ runLoop(); });
 });
-function ensureV(){return new Promise(function(res){if(!window.speechSynthesis){_vr=true;return res();}var v=window.speechSynthesis.getVoices();if(v.length){_vr=true;return res();}var done=false;window.speechSynthesis.addEventListener('voiceschanged',function once(){window.speechSynthesis.removeEventListener('voiceschanged',once);if(!done){done=true;_vr=true;res();}});setTimeout(function(){if(!done){done=true;_vr=true;res();}},3000);});}
-function animTo(si,gen){return new Promise(function(res){if(track.length<2)return res();var s=slides[si],ni=0,nd=Infinity;track.forEach(function(ll,i){var d=Math.hypot(ll[0]-s.lat,ll[1]-s.lon);if(d<nd){nd=d;ni=i;}});var fi=0;if(si>0){var ps=slides[si-1],pi=0,pd=Infinity;track.forEach(function(ll,i){var d=Math.hypot(ll[0]-ps.lat,ll[1]-ps.lon);if(d<pd){pd=d;pi=i;}});fi=pi;}var seg=track.slice(fi,ni+1);if(seg.length<2){vmap.flyTo([s.lat,s.lon],15,{duration:1.5});setTimeout(res,1600);return;}var DUR=4000,start=performance.now();if(travM)vmap.removeLayer(travM);travM=L.circleMarker(seg[0],{radius:7,color:'#fff',weight:2,fillColor:'#d4f0a0',fillOpacity:1}).addTo(vmap);vmap.panTo(seg[0],{animate:false});function step(now){if(_gen!==gen)return res();var t=Math.min((now-start)/DUR,1),pos=t*(seg.length-1),i0=Math.floor(pos),i1=Math.min(i0+1,seg.length-1),f=pos-i0;travM.setLatLng([seg[i0][0]+(seg[i1][0]-seg[i0][0])*f,seg[i0][1]+(seg[i1][1]-seg[i0][1])*f]);vmap.panTo(travM.getLatLng(),{animate:false});if(t<1)requestAnimationFrame(step);else{vmap.flyTo([s.lat,s.lon],15,{duration:.7});setTimeout(res,800);}}requestAnimationFrame(step);});}
-function speakIt(s,gen){return new Promise(function(res){if(!window.speechSynthesis||!_vr)return res();var txt=(s.comment||s.name||'').trim();if(!txt)return res();
-  function doSpeak(){
-    if(_gen!==gen)return res();
-    var u=new SpeechSynthesisUtterance(txt);u.lang='fr-FR';u.rate=0.92;
+
+function ensureV(){
+  return new Promise(function(res){
+    if(!window.speechSynthesis){_vr=true;return res();}
+    var v=window.speechSynthesis.getVoices();
+    if(v.length){_vr=true;return res();}
+    var done=false;
+    window.speechSynthesis.addEventListener('voiceschanged',function once(){
+      window.speechSynthesis.removeEventListener('voiceschanged',once);
+      if(!done){done=true;_vr=true;res();}
+    });
+    setTimeout(function(){if(!done){done=true;_vr=true;res();}},3000);
+  });
+}
+
+// ── Sleep simple, interrompu par _skip ──────────────────────────
+function sleep(ms){
+  return new Promise(function(res){
+    var t0=Date.now();
+    function check(){
+      if(_skip||Date.now()-t0>=ms)return res();
+      requestAnimationFrame(check);
+    }
+    check();
+  });
+}
+
+// ── Animation marqueur le long du trace (4s, annulable) ─────────
+function animTo(si){
+  return new Promise(function(res){
+    if(track.length<2)return res();
+    var s=slides[si],ni=0,nd=Infinity;
+    track.forEach(function(ll,i){var d=Math.hypot(ll[0]-s.lat,ll[1]-s.lon);if(d<nd){nd=d;ni=i;}});
+    var fi=0;
+    if(si>0){var ps=slides[si-1],pi=0,pd=Infinity;track.forEach(function(ll,i){var d=Math.hypot(ll[0]-ps.lat,ll[1]-ps.lon);if(d<pd){pd=d;pi=i;}});fi=pi;}
+    var seg=track.slice(fi,ni+1);
+    if(seg.length<2){vmap.flyTo([s.lat,s.lon],15,{duration:1});setTimeout(res,1100);return;}
+    var DUR=4000,start=performance.now();
+    if(travM)vmap.removeLayer(travM);
+    travM=L.circleMarker(seg[0],{radius:7,color:'#fff',weight:2,fillColor:'#d4f0a0',fillOpacity:1}).addTo(vmap);
+    vmap.panTo(seg[0],{animate:false});
+    function step(now){
+      if(_skip)return res();
+      var t=Math.min((now-start)/DUR,1),pos=t*(seg.length-1),i0=Math.floor(pos),i1=Math.min(i0+1,seg.length-1),f=pos-i0;
+      travM.setLatLng([seg[i0][0]+(seg[i1][0]-seg[i0][0])*f,seg[i0][1]+(seg[i1][1]-seg[i0][1])*f]);
+      vmap.panTo(travM.getLatLng(),{animate:false});
+      if(t<1)requestAnimationFrame(step);
+      else{vmap.flyTo([s.lat,s.lon],15,{duration:.6});setTimeout(res,700);}
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+// ── Lecture TTS, simple et bloquante jusqu'a onend/onerror/skip ──
+function speakIt(s){
+  return new Promise(function(res){
+    if(!window.speechSynthesis||!_vr||!ttsOn)return res();
+    var txt=(s.comment||s.name||'').trim();
+    if(!txt)return res();
+    var u=new SpeechSynthesisUtterance(txt);
+    u.lang='fr-FR';u.rate=0.92;
     var fr=window.speechSynthesis.getVoices().find(function(v){return v.lang&&v.lang.startsWith('fr');});
     if(fr)u.voice=fr;
-    document.getElementById('tts-ic').textContent='[TTS]';
     var done=false;
-    function finish(){if(done)return;done=true;document.getElementById('tts-ic').textContent='';res();}
-    var estDur=Math.max(3000,txt.length*70);
-    var watchdog=setTimeout(function(){if(!done){window.speechSynthesis.cancel();finish();}},estDur+4000);
-    u.onend=function(){clearTimeout(watchdog);finish();};
-    u.onerror=function(){clearTimeout(watchdog);finish();};
-    window.speechSynthesis.cancel();
-    var t0=Date.now();
-    function waitReady(){
-      if(_gen!==gen)return res();
-      if(!window.speechSynthesis.speaking||Date.now()-t0>600){window.speechSynthesis.speak(u);}
-      else{setTimeout(waitReady,50);}
+    function finish(){
+      if(done)return; done=true;
+      clearInterval(pollTimer);
+      document.getElementById('tts-ic').textContent='';
+      res();
     }
-    setTimeout(waitReady,80);
-  }
-  doSpeak();
-});}
-function countDown(gen){return new Promise(function(res){clearInterval(cTimer);var circle=document.querySelector('#cdsvg circle'),total=88,steps=30,ms=3000/steps,i=0;if(circle)circle.style.strokeDashoffset=total;cTimer=setInterval(function(){if(_gen!==gen){clearInterval(cTimer);return res();}i++;if(circle)circle.style.strokeDashoffset=total-(total*i/steps);if(i>=steps){clearInterval(cTimer);res();}},ms);});}
-async function showSlide(i,anim){
-  if(_run)return;
-  _run=true;_gen++;var gen=_gen;
-  clearInterval(cTimer);
-  if(window.speechSynthesis)window.speechSynthesis.cancel();
-  var s=slides[i];
-  document.getElementById('prog-txt').textContent=(i+1)+' / '+slides.length;
-  document.getElementById('prog-fill').style.width=((i+1)/slides.length*100)+'%';
-  document.getElementById('wp-name').textContent=s.name;
-  document.getElementById('wp-comment').textContent=s.comment;
-  var ph=document.getElementById('slide-photo'),np=document.getElementById('no-photo');
-  if(s.photo){ph.src=s.photo;ph.style.display='block';np.style.display='none';}
-  else{ph.style.display='none';np.style.display='block';}
-  if(wpM)vmap.removeLayer(wpM);
-  wpM=L.circleMarker([s.lat,s.lon],{radius:9,color:'#d4f0a0',weight:3,fillColor:'#7aad5a',fillOpacity:1}).addTo(vmap);
-  if(anim&&track.length>1)await animTo(i,gen);else vmap.flyTo([s.lat,s.lon],15,{duration:.6});
-  if(_gen!==gen)return;
-  if(ttsOn)await speakIt(s,gen);
-  if(_gen!==gen)return;
-  if(i>=slides.length-1){_run=false;document.getElementById('end').style.display='flex';return;}
-  await countDown(gen);
-  if(_gen!==gen)return;
-  _run=false;idx=i+1;showSlide(idx,true);
+    u.onend=finish; u.onerror=finish;
+    document.getElementById('tts-ic').textContent='[TTS]';
+    window.speechSynthesis.speak(u);
+    // Poll de secours : si _skip devient vrai, ou si le moteur est bloque
+    // (speaking reste true sans jamais finir au-dela de la duree estimee+5s)
+    var estDur=Math.max(3000,txt.length*90)+5000;
+    var t0=Date.now();
+    var pollTimer=setInterval(function(){
+      if(_skip){window.speechSynthesis.cancel();finish();return;}
+      if(Date.now()-t0>estDur){window.speechSynthesis.cancel();finish();}
+    },200);
+  });
 }
+
+// ── Boucle principale sequentielle : pas de recursion, pas de tokens ──
+async function runLoop(){
+  if(_loopRunning)return;
+  _loopRunning=true;
+  while(idx>=0 && idx<slides.length){
+    _skip=false;
+    var s=slides[idx];
+    document.getElementById('prog-txt').textContent=(idx+1)+' / '+slides.length;
+    document.getElementById('prog-fill').style.width=((idx+1)/slides.length*100)+'%';
+    document.getElementById('wp-name').textContent=s.name;
+    document.getElementById('wp-comment').textContent=s.comment;
+    var ph=document.getElementById('slide-photo'),np=document.getElementById('no-photo');
+    if(s.photo){ph.src=s.photo;ph.style.display='block';np.style.display='none';}
+    else{ph.style.display='none';np.style.display='block';}
+    if(wpM)vmap.removeLayer(wpM);
+    wpM=L.circleMarker([s.lat,s.lon],{radius:9,color:'#d4f0a0',weight:3,fillColor:'#7aad5a',fillOpacity:1}).addTo(vmap);
+
+    var animate = (idx>0 || _dir!==0); // anime sauf tout premier affichage
+    if(animate && track.length>1) await animTo(idx);
+    else vmap.flyTo([s.lat,s.lon],15,{duration:.6});
+
+    if(!_skip) await speakIt(s);
+
+    // Dernier slide : fin de la visite
+    if(idx>=slides.length-1 && _dir>=0){
+      document.getElementById('end').style.display='flex';
+      _loopRunning=false;
+      return;
+    }
+
+    if(!_skip) await sleep(3000);
+
+    if(_dir===0){ _loopRunning=false; return; } // navigation manuelle : on s'arrete apres l'etape demandee
+    idx += _dir;
+    if(idx<0){idx=0;_loopRunning=false;return;}
+    if(idx>=slides.length){idx=slides.length-1;continue;}
+  }
+  _loopRunning=false;
+}
+
+// ── Navigation manuelle : Precedent / Suivant ────────────────────
 function go(dir){
-  _run=false;_gen++;clearInterval(cTimer);
+  _skip=true;
   if(window.speechSynthesis)window.speechSynthesis.cancel();
   document.getElementById('tts-ic').textContent='';
   document.getElementById('end').style.display='none';
   var next=Math.max(0,Math.min(slides.length-1,idx+dir));
-  if(next===idx&&dir>0)return;
-  idx=next;showSlide(idx,dir===1);
+  idx=next;
+  _dir=0; // une seule etape, pas d'auto-continue
+  // Laisse le temps a la boucle precedente de se terminer proprement
+  setTimeout(function(){
+    if(!_loopRunning){
+      _dir = dir; // reprendre l'auto-avance apres cette etape manuelle
+      runLoop();
+    }
+  },50);
 }
-function toggleTTS(){ttsOn=!ttsOn;document.getElementById('btn-tts').textContent=ttsOn?'Son ON':'Son OFF';if(!ttsOn&&window.speechSynthesis)window.speechSynthesis.cancel();}
-function restart(){document.getElementById('end').style.display='none';_run=false;_gen++;idx=0;showSlide(0,false);}
+
+function toggleTTS(){
+  ttsOn=!ttsOn;
+  document.getElementById('btn-tts').textContent=ttsOn?'Son ON':'Son OFF';
+  if(!ttsOn&&window.speechSynthesis)window.speechSynthesis.cancel();
+}
+
+function restart(){
+  document.getElementById('end').style.display='none';
+  _skip=true;
+  if(window.speechSynthesis)window.speechSynthesis.cancel();
+  idx=0; _dir=1;
+  setTimeout(function(){ if(!_loopRunning) runLoop(); },50);
+}
+
 document.addEventListener('keydown',function(e){if(!_go)return;if(e.key==='ArrowRight')go(1);else if(e.key==='ArrowLeft')go(-1);});`;
   const lsrc='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
   const html='<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+title+' - Visite</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>'+css+'</style></head>'
