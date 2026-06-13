@@ -1467,7 +1467,34 @@ vmap.invalidateSize();
 showSlide(0);
 
 // ── Affichage d'un slide : carte + photo + texte, sans animation ni TTS auto ──
-function showSlide(i){
+var wpM=null, travM=null;
+
+// ── Animation du marqueur le long du trace entre deux etapes ──
+function animateTo(fromIdx, toIdx, targetWp){
+  if(track.length<2){ vmap.flyTo([targetWp.lat,targetWp.lon],15,{duration:.6}); return; }
+  var a=slides[fromIdx], b=targetWp;
+  var ni=0,nd=Infinity;
+  track.forEach(function(ll,i){var d=Math.hypot(ll[0]-b.lat,ll[1]-b.lon);if(d<nd){nd=d;ni=i;}});
+  var pi=0,pd=Infinity;
+  track.forEach(function(ll,i){var d=Math.hypot(ll[0]-a.lat,ll[1]-a.lon);if(d<pd){pd=d;pi=i;}});
+  var seg = pi<=ni ? track.slice(pi,ni+1) : track.slice(ni,pi+1).slice().reverse();
+  if(seg.length<2){ vmap.flyTo([b.lat,b.lon],15,{duration:.6}); return; }
+  var DUR=1500, start=performance.now();
+  if(travM) vmap.removeLayer(travM);
+  travM=L.circleMarker(seg[0],{radius:7,color:'#fff',weight:2,fillColor:'#d4f0a0',fillOpacity:1}).addTo(vmap);
+  vmap.panTo(seg[0],{animate:false});
+  function step(now){
+    var t=Math.min((now-start)/DUR,1);
+    var pos=t*(seg.length-1), i0=Math.floor(pos), i1=Math.min(i0+1,seg.length-1), f=pos-i0;
+    travM.setLatLng([seg[i0][0]+(seg[i1][0]-seg[i0][0])*f, seg[i0][1]+(seg[i1][1]-seg[i0][1])*f]);
+    vmap.panTo(travM.getLatLng(),{animate:false});
+    if(t<1) requestAnimationFrame(step);
+    else { vmap.flyTo([b.lat,b.lon],15,{duration:.5}); }
+  }
+  requestAnimationFrame(step);
+}
+
+function showSlide(i, fromIdx){
   var s=slides[i];
   document.getElementById('prog-txt').textContent=(i+1)+' / '+slides.length;
   document.getElementById('prog-fill').style.width=((i+1)/slides.length*100)+'%';
@@ -1478,20 +1505,23 @@ function showSlide(i){
   else{ph.style.display='none';np.style.display='block';}
   if(wpM)vmap.removeLayer(wpM);
   wpM=L.circleMarker([s.lat,s.lon],{radius:9,color:'#d4f0a0',weight:3,fillColor:'#7aad5a',fillOpacity:1}).addTo(vmap);
-  vmap.flyTo([s.lat,s.lon],15,{duration:.6});
+  if(typeof fromIdx==='number' && fromIdx!==i){
+    animateTo(fromIdx, i, s);
+  } else {
+    vmap.flyTo([s.lat,s.lon],15,{duration:.6});
+  }
   if(window.speechSynthesis)window.speechSynthesis.cancel();
   document.getElementById('btn-prev').disabled = (i===0);
   document.getElementById('btn-next').disabled = (i===slides.length-1);
-  document.getElementById('end').style.display='none';
 }
-var wpM=null;
 
 // ── Navigation manuelle ───────────────────────────────────────
 function go(dir){
   var next=idx+dir;
   if(next<0||next>=slides.length)return;
+  var prev=idx;
   idx=next;
-  showSlide(idx);
+  showSlide(idx, prev);
 }
 
 // ── Lecture du commentaire a la demande, sur clic ─────────────
