@@ -522,22 +522,28 @@ async function loadKMZ(file) {
 // ── Marching Ants : tracé animé ──────────────────────────────
 function addMarchingAntsTrack(coords) {
   map.eachLayer(l => { if (l._isTrack) map.removeLayer(l); });
-  // fond fixe
-  const bg = L.polyline(coords, { color:'#2d5a1b', weight:6, opacity:.45, interactive:false });
+  // fond sombre épais
+  const bg = L.polyline(coords, { color:'#1a3a0f', weight:8, opacity:.85, interactive:false });
   bg._isTrack = true;
   bg.addTo(map);
-  // couche animée
-  const rnd = L.svg({ padding: 0.5 });
-  const fg = L.polyline(coords, { color:'#7aad5a', weight:4, renderer:rnd, interactive:false });
+  // halo intermédiaire
+  const mid = L.polyline(coords, { color:'#3d7a28', weight:5, opacity:.6, interactive:false });
+  mid._isTrack = true;
+  mid.addTo(map);
+  // couche animée — renderer par défaut de la carte (pas de renderer isolé)
+  const fg = L.polyline(coords, { color:'#d4f0a0', weight:3, interactive:false });
   fg._isTrack = true;
   fg.addTo(map);
+
   function applyDash(){
     var el=fg._path;
-    if(el){el.style.strokeDasharray='10 12';el.style.strokeLinecap='round';
-           el.style.animation='ma-fw .55s linear infinite';}
+    if(el){ el.setAttribute('stroke-dasharray','10 12'); el.classList.add('ma-trail'); }
     else requestAnimationFrame(applyDash);
   }
   applyDash();
+  // Réappliquer après changement de fond de carte / zoom : Leaflet peut recréer le <path>
+  map.on('zoomend moveend baselayerchange', () => requestAnimationFrame(applyDash));
+
   return fg;
 }
 
