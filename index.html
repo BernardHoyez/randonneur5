@@ -988,6 +988,10 @@ function updateStats() {
 
 // ── NAVIGATION ───────────────────────────────────────
 function switchPanel(id) {
+  // Fermer l'overlay de visite s'il est ouvert, pour éviter qu'il bloque l'interface
+  var ov = document.getElementById('visite-overlay');
+  if (ov && ov.style.display !== 'none') { stopVisite(); }
+
   document.querySelectorAll('.panel').forEach(p=>{p.classList.remove('active');p.style.display='none';});
   var panel=document.getElementById(id);
   panel.classList.add('active'); panel.style.display='flex';
@@ -995,7 +999,7 @@ function switchPanel(id) {
     b.classList.toggle('active',
       (id==='editor-panel'&&b.textContent.includes('Édition'))||
       (id==='visite-panel'&&b.textContent.includes('Visite'))||
-      (id==='deploy-panel'&&b.textContent.includes('Éploiement')));
+      (id==='deploy-panel'&&b.textContent.includes('ploiement')));
   });
   if (id==='editor-panel') setTimeout(()=>map.invalidateSize(),100);
   if (id==='deploy-panel') refreshDeployPanel();
