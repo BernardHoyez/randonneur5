@@ -344,21 +344,21 @@ html, body { height: 100%; overflow: hidden; font-family: 'Outfit', sans-serif; 
         <div style="flex:1;height:3px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden;">
           <div id="visite-prog-fill" style="height:100%;background:#7aad5a;border-radius:2px;transition:width .4s;width:0%;"></div>
         </div>
-        <span id="visite-tts-ic" style="font-size:.9rem;flex-shrink:0;min-width:20px;"></span>
       </div>
       <button onclick="stopVisite()" style="position:absolute;top:8px;right:12px;width:34px;height:34px;border-radius:50%;background:rgba(200,75,26,.7);border:none;color:white;font-size:.9rem;cursor:pointer;z-index:600;">&#x2715;</button>
     </div>
     <div style="flex:1;position:relative;background:#0a0f07;display:flex;align-items:center;justify-content:center;overflow:hidden;">
       <img id="visite-photo" src="" alt="" style="max-width:100%;max-height:100%;object-fit:contain;display:none;">
       <div id="visite-no-photo" style="font-size:4rem;opacity:.2;display:none;">🏔</div>
-      <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.88));padding:18px 16px 10px;">
+      <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.88));padding:18px 16px 60px;">
         <div id="visite-wp-name" style="font-family:monospace;font-size:.95rem;font-weight:700;color:#7aad5a;margin-bottom:3px;"></div>
-        <div id="visite-wp-comment" style="font-size:.78rem;color:#b8d4a0;line-height:1.5;max-height:3.3em;overflow:hidden;"></div>
+        <div id="visite-wp-comment" style="font-size:.78rem;color:#b8d4a0;line-height:1.5;max-height:4.5em;overflow:hidden;"></div>
       </div>
-      <button onclick="visiteNext()" style="position:absolute;bottom:12px;right:16px;padding:8px 16px;border-radius:20px;background:rgba(74,124,53,.85);border:1px solid #7aad5a;color:#f8f5ee;font-size:.78rem;font-weight:600;cursor:pointer;z-index:10;">Passer &#x203a;</button>
-      <svg viewBox="0 0 32 32" width="32" height="32" style="position:absolute;bottom:12px;left:16px;z-index:10;">
-        <circle id="visite-cd-circle" cx="16" cy="16" r="14" fill="none" stroke="#7aad5a" stroke-width="3" stroke-dasharray="88" stroke-dashoffset="88" transform="rotate(-90 16 16)"/>
-      </svg>
+      <div style="position:absolute;bottom:10px;left:0;right:0;display:flex;gap:8px;justify-content:center;z-index:10;padding:0 10px;">
+        <button id="visite-btn-prev" onclick="visitePrev()" style="padding:9px 16px;border-radius:20px;border:none;font-size:.78rem;font-weight:600;cursor:pointer;background:rgba(255,255,255,.12);color:#b8d4a0;">&laquo; Préc.</button>
+        <button id="visite-btn-tts" onclick="visiteReadComment()" style="padding:9px 16px;border-radius:20px;border:none;font-size:.78rem;font-weight:600;cursor:pointer;background:rgba(74,124,53,.9);color:#f8f5ee;flex:1;max-width:220px;">Lire le commentaire</button>
+        <button id="visite-btn-next" onclick="visiteNext()" style="padding:9px 16px;border-radius:20px;border:none;font-size:.78rem;font-weight:600;cursor:pointer;background:rgba(255,255,255,.12);color:#b8d4a0;">Suiv. &raquo;</button>
+      </div>
     </div>
   </div>
 
@@ -1328,7 +1328,7 @@ async function idbClear(){try{const db=await openIDB();return new Promise((res,r
 // ═══════════════════════════════════════════════════
 //  MOTEUR DE VISITE
 // ═══════════════════════════════════════════════════
-let _vMap=null,_vTravM=null,_vWpM=null,_vIdx=0,_vRunning=false,_vCountTimer=null;
+let _vMap=null,_vTravM=null,_vWpM=null,_vIdx=0;
 
 function updateVisiteButtons(){
   const ok=state.waypoints.length>0;
@@ -1349,103 +1349,117 @@ function initVisiteMap(){
   _vMap=L.map('visite-map',{zoomControl:false,attributionControl:false});
   const td={'osm':L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}),'ign-plan':L.tileLayer('https://data.geopf.fr/wmts?layer=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&style=normal&tilematrixset=PM&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image%2Fpng&TileMatrix={z}&TileCol={x}&TileRow={y}',{maxZoom:19}),'ign-ortho':L.tileLayer('https://data.geopf.fr/wmts?layer=ORTHOIMAGERY.ORTHOPHOTOS&style=normal&tilematrixset=PM&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image%2Fjpeg&TileMatrix={z}&TileCol={x}&TileRow={y}',{maxZoom:20})};
   (td[state.mapLayer||'osm']||td['osm']).addTo(_vMap);
-  if(state.trackCoords.length>1){const lls=state.trackCoords.map(c=>[c[0],c[1]]);L.polyline(lls,{color:'#1a3a0f',weight:6,opacity:.8,interactive:false}).addTo(_vMap);const tl=L.polyline(lls,{color:'#3d7a28',weight:3,opacity:.7,interactive:false}).addTo(_vMap);_vMap.fitBounds(tl.getBounds(),{padding:[20,20]});}
+  if(state.trackCoords.length>1){
+    const lls=state.trackCoords.map(c=>[c[0],c[1]]);
+    L.polyline(lls,{color:'#1a3a0f',weight:8,opacity:.85,interactive:false}).addTo(_vMap);
+    L.polyline(lls,{color:'#3d7a28',weight:5,opacity:.6,interactive:false}).addTo(_vMap);
+    const ants=L.polyline(lls,{color:'#d4f0a0',weight:3,interactive:false}).addTo(_vMap);
+    function applyDash(){
+      const el=ants._path;
+      if(el){ el.setAttribute('stroke-dasharray','10 12'); el.classList.add('ma-trail'); }
+      else requestAnimationFrame(applyDash);
+    }
+    applyDash();
+    _vMap.on('zoomend moveend baselayerchange', ()=>requestAnimationFrame(applyDash));
+    _vMap.fitBounds(ants.getBounds(),{padding:[20,20]});
+  }
 }
 
+// ── Ouverture / fermeture de l'overlay ────────────────────────
 function startVisite(){
   if(!state.waypoints.length) return;
-  _vIdx=0;_vRunning=true;
+  _vIdx=0;
   document.getElementById('visite-overlay').style.display='flex';
-  setTimeout(()=>{initVisiteMap();_vMap.invalidateSize();visiteStep();},80);
+  setTimeout(()=>{ initVisiteMap(); _vMap.invalidateSize(); vShowSlide(_vIdx); },80);
 }
 
 function stopVisite(){
-  _vRunning=false;clearInterval(_vCountTimer);
-  window.speechSynthesis&&window.speechSynthesis.cancel();
+  window.speechSynthesis && window.speechSynthesis.cancel();
   document.getElementById('visite-overlay').style.display='none';
   if(_vTravM){_vMap.removeLayer(_vTravM);_vTravM=null;}
   if(_vWpM){_vMap.removeLayer(_vWpM);_vWpM=null;}
 }
 
-function visiteNext(){
-  clearInterval(_vCountTimer);window.speechSynthesis&&window.speechSynthesis.cancel();
-  _vRunning=false;_vIdx++;
-  if(_vIdx>=state.waypoints.length){stopVisite();return;}
-  _vRunning=true;visiteStep();
-}
-
-async function visiteStep(){
-  if(!_vRunning) return;
-  const wp=state.waypoints[_vIdx],total=state.waypoints.length;
-  document.getElementById('visite-prog-txt').textContent=(_vIdx+1)+' / '+total;
-  document.getElementById('visite-prog-fill').style.width=((_vIdx+1)/total*100)+'%';
+// ── Affichage d'une étape, avec animation optionnelle depuis la précédente ──
+function vShowSlide(i, fromIdx){
+  const wp=state.waypoints[i], total=state.waypoints.length;
+  document.getElementById('visite-prog-txt').textContent=(i+1)+' / '+total;
+  document.getElementById('visite-prog-fill').style.width=((i+1)/total*100)+'%';
   document.getElementById('visite-wp-name').textContent=wp.name;
   document.getElementById('visite-wp-comment').textContent=wp.comment||'';
+
   const ph=document.getElementById('visite-photo'),np=document.getElementById('visite-no-photo');
   if(wp.photoBlob){ph.src=URL.createObjectURL(wp.photoBlob);ph.style.display='block';np.style.display='none';}
   else{ph.style.display='none';ph.src='';np.style.display='block';}
-  await vAnimateTo(wp); if(!_vRunning) return;
+
   if(_vWpM) _vMap.removeLayer(_vWpM);
   _vWpM=L.circleMarker([wp.lat,wp.lon],{radius:9,color:'#d4f0a0',weight:3,fillColor:'#7aad5a',fillOpacity:1}).addTo(_vMap);
-  await vSpeak(wp.name,wp.comment); if(!_vRunning) return;
-  if(_vIdx>=total-1){stopVisite();return;}
-  await vCountdown(3000); if(!_vRunning) return;
-  _vIdx++;visiteStep();
+
+  if(typeof fromIdx==='number' && fromIdx!==i){
+    vAnimateTo(fromIdx, wp);
+  } else {
+    _vMap.flyTo([wp.lat,wp.lon],15,{duration:.6});
+  }
+
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  document.getElementById('visite-btn-prev').disabled = (i===0);
+  document.getElementById('visite-btn-next').disabled = (i===total-1);
 }
 
-function vAnimateTo(wp){
-  return new Promise(res=>{
-    if(state.trackCoords.length<2){_vMap.flyTo([wp.lat,wp.lon],15,{duration:1});setTimeout(res,1100);return;}
-    const lls=state.trackCoords.map(c=>[c[0],c[1]]);
-    let ni=0,nd=Infinity;lls.forEach((ll,i)=>{const d=Math.hypot(ll[0]-wp.lat,ll[1]-wp.lon);if(d<nd){nd=d;ni=i;}});
-    let fi=0;if(_vIdx>0){const pw=state.waypoints[_vIdx-1];let pi=0,pd=Infinity;lls.forEach((ll,i)=>{const d=Math.hypot(ll[0]-pw.lat,ll[1]-pw.lon);if(d<pd){pd=d;pi=i;}});fi=pi;}
-    const seg=lls.slice(fi,ni+1);
-    if(seg.length<2){_vMap.flyTo([wp.lat,wp.lon],15,{duration:1});setTimeout(res,1100);return;}
-    const DUR=4000,start=performance.now();
-    if(_vTravM) _vMap.removeLayer(_vTravM);
-    _vTravM=L.circleMarker(seg[0],{radius:7,color:'#fff',weight:2,fillColor:'#d4f0a0',fillOpacity:1}).addTo(_vMap);
-    _vMap.panTo(seg[0],{animate:false});
-    function step(now){
-      if(!_vRunning) return res();
-      const t=Math.min((now-start)/DUR,1),pos=t*(seg.length-1),i0=Math.floor(pos),i1=Math.min(i0+1,seg.length-1),f=pos-i0;
-      _vTravM.setLatLng([seg[i0][0]+(seg[i1][0]-seg[i0][0])*f,seg[i0][1]+(seg[i1][1]-seg[i0][1])*f]);
-      _vMap.panTo(_vTravM.getLatLng(),{animate:false});
-      if(t<1) requestAnimationFrame(step);
-      else{_vMap.flyTo([wp.lat,wp.lon],15,{duration:.6});setTimeout(res,700);}
-    }
-    requestAnimationFrame(step);
-  });
+// ── Navigation manuelle ────────────────────────────────────────
+function visiteNext(){
+  if(_vIdx>=state.waypoints.length-1) return;
+  const prev=_vIdx; _vIdx++;
+  vShowSlide(_vIdx, prev);
+}
+function visitePrev(){
+  if(_vIdx<=0) return;
+  const prev=_vIdx; _vIdx--;
+  vShowSlide(_vIdx, prev);
 }
 
-function vSpeak(name,comment){
-  return new Promise(res=>{
-    if(!window.speechSynthesis) return res();
-    const txt=(comment||name||'').trim(); if(!txt) return res();
-    window.speechSynthesis.cancel();
-    setTimeout(()=>{
-      const u=new SpeechSynthesisUtterance(txt);u.lang='fr-FR';u.rate=0.92;
-      const fr=window.speechSynthesis.getVoices().find(v=>v.lang&&v.lang.startsWith('fr'));
-      if(fr) u.voice=fr;
-      const ic=document.getElementById('visite-tts-ic');
-      if(ic) ic.textContent='[en cours]';
-      u.onend=()=>{if(ic)ic.textContent='';res();};
-      u.onerror=()=>{if(ic)ic.textContent='';res();};
-      window.speechSynthesis.speak(u);
-    },200);
-  });
+// ── Lecture du commentaire sur clic ─────────────────────────────
+function visiteReadComment(){
+  if(!window.speechSynthesis) return;
+  const wp=state.waypoints[_vIdx];
+  const txt=(wp.comment||wp.name||'').trim();
+  if(!txt) return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(txt);
+  u.lang='fr-FR'; u.rate=0.92;
+  const fr=window.speechSynthesis.getVoices().find(v=>v.lang&&v.lang.startsWith('fr'));
+  if(fr) u.voice=fr;
+  const btn=document.getElementById('visite-btn-tts');
+  btn.textContent='Lecture...'; btn.disabled=true;
+  function done(){ btn.textContent='Lire le commentaire'; btn.disabled=false; }
+  u.onend=done; u.onerror=done;
+  window.speechSynthesis.speak(u);
 }
 
-function vCountdown(ms){
-  return new Promise(res=>{
-    clearInterval(_vCountTimer);
-    const circle=document.getElementById('visite-cd-circle'),total=88,steps=30,interval=ms/steps;
-    let i=0; if(circle) circle.style.strokeDashoffset=total;
-    _vCountTimer=setInterval(()=>{
-      if(!_vRunning){clearInterval(_vCountTimer);return res();}
-      i++; if(circle) circle.style.strokeDashoffset=total-(total*i/steps);
-      if(i>=steps){clearInterval(_vCountTimer);res();}
-    },interval);
-  });
+// ── Animation du marqueur le long du tracé entre deux étapes (1.5s) ──
+function vAnimateTo(fromIdx, targetWp){
+  if(state.trackCoords.length<2){ _vMap.flyTo([targetWp.lat,targetWp.lon],15,{duration:.6}); return; }
+  const lls=state.trackCoords.map(c=>[c[0],c[1]]);
+  const a=state.waypoints[fromIdx], b=targetWp;
+  let ni=0,nd=Infinity;
+  lls.forEach((ll,i)=>{const d=Math.hypot(ll[0]-b.lat,ll[1]-b.lon);if(d<nd){nd=d;ni=i;}});
+  let pi=0,pd=Infinity;
+  lls.forEach((ll,i)=>{const d=Math.hypot(ll[0]-a.lat,ll[1]-a.lon);if(d<pd){pd=d;pi=i;}});
+  const seg = pi<=ni ? lls.slice(pi,ni+1) : lls.slice(ni,pi+1).slice().reverse();
+  if(seg.length<2){ _vMap.flyTo([b.lat,b.lon],15,{duration:.6}); return; }
+  const DUR=1500, start=performance.now();
+  if(_vTravM) _vMap.removeLayer(_vTravM);
+  _vTravM=L.circleMarker(seg[0],{radius:7,color:'#fff',weight:2,fillColor:'#d4f0a0',fillOpacity:1}).addTo(_vMap);
+  _vMap.panTo(seg[0],{animate:false});
+  function step(now){
+    const t=Math.min((now-start)/DUR,1);
+    const pos=t*(seg.length-1), i0=Math.floor(pos), i1=Math.min(i0+1,seg.length-1), f=pos-i0;
+    _vTravM.setLatLng([seg[i0][0]+(seg[i1][0]-seg[i0][0])*f, seg[i0][1]+(seg[i1][1]-seg[i0][1])*f]);
+    _vMap.panTo(_vTravM.getLatLng(),{animate:false});
+    if(t<1) requestAnimationFrame(step);
+    else { _vMap.flyTo([b.lat,b.lon],15,{duration:.5}); }
+  }
+  requestAnimationFrame(step);
 }
 
 // ═══════════════════════════════════════════════════
