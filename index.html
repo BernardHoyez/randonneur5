@@ -337,7 +337,7 @@ html, body { height: 100%; overflow: hidden; font-family: 'Outfit', sans-serif; 
 
   <!-- OVERLAY PLEIN ECRAN VISITE -->
   <div id="visite-overlay" style="position:fixed;inset:0;z-index:10000;background:#000;display:none;flex-direction:column;">
-    <div style="flex:0 0 44vh;position:relative;">
+    <div style="flex:0 0 38vh;position:relative;min-height:0;">
       <div id="visite-map" style="width:100%;height:100%;"></div>
       <div style="position:absolute;top:0;left:0;right:0;background:linear-gradient(rgba(0,0,0,.7),transparent);padding:8px 14px;display:flex;align-items:center;gap:10px;z-index:500;">
         <span id="visite-prog-txt" style="font-family:monospace;font-size:.72rem;color:#b8d4a0;flex-shrink:0;">1 / 1</span>
@@ -347,18 +347,18 @@ html, body { height: 100%; overflow: hidden; font-family: 'Outfit', sans-serif; 
       </div>
       <button onclick="stopVisite()" style="position:absolute;top:8px;right:12px;width:34px;height:34px;border-radius:50%;background:rgba(200,75,26,.7);border:none;color:white;font-size:.9rem;cursor:pointer;z-index:600;">&#x2715;</button>
     </div>
-    <div style="flex:1;position:relative;background:#0a0f07;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+    <div style="flex:1 1 auto;min-height:0;position:relative;background:#0a0f07;display:flex;align-items:center;justify-content:center;overflow:hidden;">
       <img id="visite-photo" src="" alt="" style="max-width:100%;max-height:100%;object-fit:contain;display:none;">
       <div id="visite-no-photo" style="font-size:4rem;opacity:.2;display:none;">🏔</div>
-      <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.88));padding:18px 16px 60px;">
+      <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.88));padding:14px 16px;max-height:50%;overflow-y:auto;">
         <div id="visite-wp-name" style="font-family:monospace;font-size:.95rem;font-weight:700;color:#7aad5a;margin-bottom:3px;"></div>
-        <div id="visite-wp-comment" style="font-size:.78rem;color:#b8d4a0;line-height:1.5;max-height:4.5em;overflow:hidden;"></div>
+        <div id="visite-wp-comment" style="font-size:.78rem;color:#b8d4a0;line-height:1.5;"></div>
       </div>
-      <div style="position:absolute;bottom:10px;left:0;right:0;display:flex;gap:8px;justify-content:center;z-index:10;padding:0 10px;">
-        <button id="visite-btn-prev" onclick="visitePrev()" style="padding:9px 16px;border-radius:20px;border:none;font-size:.78rem;font-weight:600;cursor:pointer;background:rgba(255,255,255,.12);color:#b8d4a0;">&laquo; Préc.</button>
-        <button id="visite-btn-tts" onclick="visiteReadComment()" style="padding:9px 16px;border-radius:20px;border:none;font-size:.78rem;font-weight:600;cursor:pointer;background:rgba(74,124,53,.9);color:#f8f5ee;flex:1;max-width:220px;">Lire le commentaire</button>
-        <button id="visite-btn-next" onclick="visiteNext()" style="padding:9px 16px;border-radius:20px;border:none;font-size:.78rem;font-weight:600;cursor:pointer;background:rgba(255,255,255,.12);color:#b8d4a0;">Suiv. &raquo;</button>
-      </div>
+    </div>
+    <div style="flex:0 0 auto;display:flex;gap:8px;justify-content:center;padding:10px;background:#0d1a09;border-top:1px solid rgba(255,255,255,.08);padding-bottom:max(10px,env(safe-area-inset-bottom));">
+      <button id="visite-btn-prev" onclick="visitePrev()" style="padding:11px 16px;border-radius:20px;border:none;font-size:.8rem;font-weight:600;cursor:pointer;background:rgba(255,255,255,.12);color:#b8d4a0;">&laquo; Préc.</button>
+      <button id="visite-btn-tts" onclick="visiteReadComment()" style="padding:11px 16px;border-radius:20px;border:none;font-size:.8rem;font-weight:600;cursor:pointer;background:rgba(74,124,53,.9);color:#f8f5ee;flex:1;max-width:220px;">Lire le commentaire</button>
+      <button id="visite-btn-next" onclick="visiteNext()" style="padding:11px 16px;border-radius:20px;border:none;font-size:.8rem;font-weight:600;cursor:pointer;background:rgba(255,255,255,.12);color:#b8d4a0;">Suiv. &raquo;</button>
     </div>
   </div>
 
@@ -1478,7 +1478,7 @@ async function exportVisite(){
   const slidesData=JSON.stringify(slides);
   const title=state.rawFileName||'Visite';
   const LAYER=state.mapLayer;
-  const css='@keyframes ma-fw{to{stroke-dashoffset:-22}}.ma-trail-export{stroke-linecap:round;animation:ma-fw .55s linear infinite;}*{box-sizing:border-box;margin:0;padding:0}body{background:#000;font-family:system-ui;color:#f0ebe0;height:100vh;overflow:hidden;display:flex;flex-direction:column}#vmap-wrap{flex:0 0 42vh;position:relative}#vmap{width:100%;height:100%}#hud{position:absolute;top:0;left:0;right:0;background:linear-gradient(rgba(0,0,0,.7),transparent);padding:8px 14px;display:flex;align-items:center;gap:10px;z-index:500}#prog-txt{font-family:monospace;font-size:.72rem;color:#b8d4a0;flex-shrink:0}#prog-bar{flex:1;height:3px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden}#prog-fill{height:100%;background:#7aad5a;border-radius:2px;transition:width .4s}#photo-wrap{flex:1;position:relative;background:#0a0f07;display:flex;align-items:center;justify-content:center;overflow:hidden}#slide-photo{max-width:100%;max-height:100%;object-fit:contain;display:none}#no-photo{font-size:5rem;opacity:.15}#info-bar{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.88));padding:18px 16px 60px}#wp-name{font-family:monospace;font-size:.95rem;font-weight:700;color:#7aad5a;margin-bottom:3px}#wp-comment{font-size:.78rem;color:#b8d4a0;line-height:1.5;max-height:4.5em;overflow:hidden}#controls{position:absolute;bottom:10px;left:0;right:0;display:flex;gap:8px;justify-content:center;z-index:10;padding:0 10px}.ctrl-btn{padding:9px 16px;border-radius:20px;border:none;font-size:.78rem;font-weight:600;cursor:pointer;font-family:system-ui}.ctrl-btn:disabled{opacity:.35;cursor:default}#btn-next,#btn-prev{background:rgba(255,255,255,.12);color:#b8d4a0}#btn-tts{background:rgba(74,124,53,.9);color:#f8f5ee;flex:1;max-width:220px}';
+  const css='@keyframes ma-fw{to{stroke-dashoffset:-22}}.ma-trail-export{stroke-linecap:round;animation:ma-fw .55s linear infinite;}*{box-sizing:border-box;margin:0;padding:0}html,body{height:100%}body{background:#000;font-family:system-ui;color:#f0ebe0;height:100vh;overflow:hidden;display:flex;flex-direction:column}#vmap-wrap{flex:0 0 38vh;position:relative;min-height:0}#vmap{width:100%;height:100%}#hud{position:absolute;top:0;left:0;right:0;background:linear-gradient(rgba(0,0,0,.7),transparent);padding:8px 14px;display:flex;align-items:center;gap:10px;z-index:500}#prog-txt{font-family:monospace;font-size:.72rem;color:#b8d4a0;flex-shrink:0}#prog-bar{flex:1;height:3px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden}#prog-fill{height:100%;background:#7aad5a;border-radius:2px;transition:width .4s}#photo-wrap{flex:1 1 auto;min-height:0;position:relative;background:#0a0f07;display:flex;align-items:center;justify-content:center;overflow:hidden}#slide-photo{max-width:100%;max-height:100%;object-fit:contain;display:none}#no-photo{font-size:5rem;opacity:.15}#info-bar{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.88));padding:14px 16px;max-height:50%;overflow-y:auto}#wp-name{font-family:monospace;font-size:.95rem;font-weight:700;color:#7aad5a;margin-bottom:3px}#wp-comment{font-size:.78rem;color:#b8d4a0;line-height:1.5}#controls{flex:0 0 auto;display:flex;gap:8px;justify-content:center;padding:10px;background:#0d1a09;border-top:1px solid rgba(255,255,255,.08);padding-bottom:max(10px,env(safe-area-inset-bottom))}.ctrl-btn{padding:11px 16px;border-radius:20px;border:none;font-size:.8rem;font-weight:600;cursor:pointer;font-family:system-ui}.ctrl-btn:disabled{opacity:.35;cursor:default}#btn-next,#btn-prev{background:rgba(255,255,255,.12);color:#b8d4a0}#btn-tts{background:rgba(74,124,53,.9);color:#f8f5ee;flex:1;max-width:220px}';
   const jsMain=`var slides=${slidesData};var track=${trackData};
 var idx=0;
 var vmap=L.map('vmap',{zoomControl:false,attributionControl:false});
@@ -1586,8 +1586,8 @@ document.addEventListener('keydown',function(e){if(e.key==='ArrowRight')go(1);el
     +'<body><div id="splash" style="display:none"></div>'
     +'<div id="vmap-wrap"><div id="vmap"></div><div id="hud"><span id="prog-txt">1 / '+slides.length+'</span><div id="prog-bar"><div id="prog-fill" style="width:0%"></div></div></div></div>'
     +'<div id="photo-wrap"><img id="slide-photo" src="" alt=""><div id="no-photo">~</div><div id="info-bar"><div id="wp-name"></div><div id="wp-comment"></div></div>'
-    +'<div id="controls"><button class="ctrl-btn" id="btn-prev" onclick="go(-1)">&laquo; Prec.</button><button class="ctrl-btn" id="btn-tts" onclick="readComment()">Lire le commentaire</button><button class="ctrl-btn" id="btn-next" onclick="go(1)">Suiv. &raquo;</button></div>'
     +'</div>'
+    +'<div id="controls"><button class="ctrl-btn" id="btn-prev" onclick="go(-1)">&laquo; Prec.</button><button class="ctrl-btn" id="btn-tts" onclick="readComment()">Lire le commentaire</button><button class="ctrl-btn" id="btn-next" onclick="go(1)">Suiv. &raquo;</button></div>'
     +'<scr'+'ipt src="'+lsrc+'"></scr'+'ipt>'
     +'<scr'+'ipt>'+jsMain+'</scr'+'ipt>'
     +'</body></html>';
