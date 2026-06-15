@@ -1459,15 +1459,18 @@ function vAnimateTo(fromIdx, targetWp){
   lls.forEach((ll,i)=>{const d=Math.hypot(ll[0]-a.lat,ll[1]-a.lon);if(d<pd){pd=d;pi=i;}});
   const seg = pi<=ni ? lls.slice(pi,ni+1) : lls.slice(ni,pi+1).slice().reverse();
   if(seg.length<2){ _vMap.flyTo([b.lat,b.lon],15,{duration:.6}); return; }
+
+  // Cadrer la vue sur le segment entier (une seule fois, sans animation pendant le déplacement)
+  _vMap.fitBounds(L.latLngBounds(seg), {padding:[30,30], animate:true, duration:.4});
+
   const DUR=1500, start=performance.now();
   if(_vTravM) _vMap.removeLayer(_vTravM);
   _vTravM=L.circleMarker(seg[0],{radius:7,color:'#fff',weight:2,fillColor:'#d4f0a0',fillOpacity:1}).addTo(_vMap);
-  _vMap.panTo(seg[0],{animate:false});
+
   function step(now){
     const t=Math.min((now-start)/DUR,1);
     const pos=t*(seg.length-1), i0=Math.floor(pos), i1=Math.min(i0+1,seg.length-1), f=pos-i0;
     _vTravM.setLatLng([seg[i0][0]+(seg[i1][0]-seg[i0][0])*f, seg[i0][1]+(seg[i1][1]-seg[i0][1])*f]);
-    _vMap.panTo(_vTravM.getLatLng(),{animate:false});
     if(t<1) requestAnimationFrame(step);
     else { _vMap.flyTo([b.lat,b.lon],15,{duration:.5}); }
   }
@@ -1533,17 +1536,26 @@ function animateTo(fromIdx, toIdx, targetWp){
   track.forEach(function(ll,i){var d=Math.hypot(ll[0]-a.lat,ll[1]-a.lon);if(d<pd){pd=d;pi=i;}});
   var seg = pi<=ni ? track.slice(pi,ni+1) : track.slice(ni,pi+1).slice().reverse();
   if(seg.length<2){ vmap.flyTo([b.lat,b.lon],15,{duration:.6}); return; }
-  var DUR=1500, start=performance.now();
+
+  // Afficher la vue d'ensemble du segment pendant l'animation
+  // (pas de panTo() par frame — trop instable sur Android)
+  var bounds = L.latLngBounds(seg);
+  vmap.fitBounds(bounds, {padding:[30,30], animate:true, duration:.4});
+
   if(travM) vmap.removeLayer(travM);
-  travM=L.circleMarker(seg[0],{radius:7,color:'#fff',weight:2,fillColor:'#d4f0a0',fillOpacity:1}).addTo(vmap);
-  vmap.panTo(seg[0],{animate:false});
+  travM = L.circleMarker(seg[0], {radius:7,color:'#fff',weight:2,fillColor:'#d4f0a0',fillOpacity:1}).addTo(vmap);
+
+  var DUR=1500, start=performance.now();
   function step(now){
     var t=Math.min((now-start)/DUR,1);
     var pos=t*(seg.length-1), i0=Math.floor(pos), i1=Math.min(i0+1,seg.length-1), f=pos-i0;
+    // Déplacer uniquement le marqueur, sans bouger la carte
     travM.setLatLng([seg[i0][0]+(seg[i1][0]-seg[i0][0])*f, seg[i0][1]+(seg[i1][1]-seg[i0][1])*f]);
-    vmap.panTo(travM.getLatLng(),{animate:false});
     if(t<1) requestAnimationFrame(step);
-    else { vmap.flyTo([b.lat,b.lon],15,{duration:.5}); }
+    else {
+      // Animation terminée : recentrer sur la destination
+      vmap.flyTo([b.lat,b.lon],15,{duration:.6});
+    }
   }
   requestAnimationFrame(step);
 }
